@@ -1,0 +1,49 @@
+services:
+  api:
+    build: .
+    ports: ["127.0.0.1:8000:8000"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://marketlens:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db/marketlens
+    depends_on:
+      db: {condition: service_healthy}
+  worker:
+    build: .
+    command: celery -A backend.tasks:app worker --loglevel=info --concurrency=1
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://marketlens:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db/marketlens
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER:-marketlens}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbit:5672//
+    depends_on:
+      db: {condition: service_healthy}
+      rabbit: {condition: service_healthy}
+  beat:
+    build: .
+    command: celery -A backend.tasks:app beat --loglevel=info --schedule=/tmp/celerybeat
+    env_file: .env
+    environment:
+      CELERY_BROKER_URL: amqp://${RABBITMQ_USER:-marketlens}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbit:5672//
+    depends_on:
+      rabbit: {condition: service_healthy}
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: marketlens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: marketlens
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketlens"]
+      interval: 5s
+      retries: 10
+  rabbit:
+    image: rabbitmq:4-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-marketlens}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      retries: 10
+volumes:
+  postgres_data:

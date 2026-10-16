@@ -1,0 +1,8 @@
+{
+  "name": "marketlens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evidence-led research dashboard and FastAPI backend",
+  "scripts": {"test": "node tests/frontend.cjs", "check": "node --check dist/app.js"},
+  "devDependencies": {"jsdom": "^27.0.0"}
+}

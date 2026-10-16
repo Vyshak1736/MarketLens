@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: marketlens
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: API_TOKEN
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://marketlens-vishak-research.vishak1736.chatgpt.site
+      - key: NEWS_ALLOWED_HOSTS
+        value: www.business-standard.com
+      - key: NEWS_FEEDS
+        value: https://www.business-standard.com/rss/markets-106.rss
+      - key: READ_ARTICLES
+        value: 'true'

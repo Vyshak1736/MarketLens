@@ -1,0 +1,26 @@
+name: Scheduled market news collection
+on:
+  workflow_dispatch:
+  schedule:
+    # UTC: 09:47, 12:47, 15:47, 18:47 IST on weekdays.
+    # GitHub schedules may be delayed; this is not a trading-time guarantee.
+    - cron: '17 4,7,10,13 * * 1-5'
+permissions:
+  contents: read
+concurrency:
+  group: marketlens-news-scan
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run source collection
+        env:
+          MARKETLENS_API_URL: ${{ secrets.MARKETLENS_API_URL }}
+          MARKETLENS_API_TOKEN: ${{ secrets.MARKETLENS_API_TOKEN }}
+        run: python scripts/scheduled_scan.py
