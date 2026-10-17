@@ -8,3 +8,4 @@ celery>=5.4,<6
 redis>=5,<7
 langgraph>=0.2,<2
 pytest>=8,<10
+yfinance>=0.2.65,<1

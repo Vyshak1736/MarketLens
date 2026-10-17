@@ -5,6 +5,7 @@ const w=dom.window;w.HTMLDialogElement.prototype.showModal=function(){this.open=
 w.eval(fs.readFileSync(root+'app.js','utf8')+'\nwindow.__parseCsv=parseCsv;');
 assert(w.document.querySelector('h1').textContent.includes('See the signal'));
 assert(!w.document.body.textContent.includes('toFixed'));
+const toggle=w.document.querySelector('[data-action="theme"]');assert(toggle);toggle.click();assert.equal(w.document.documentElement.dataset.theme,'dark');assert.equal(w.localStorage.getItem('marketlens-theme'),'dark');w.document.querySelector('[data-action="theme"]').click();assert.equal(w.document.documentElement.dataset.theme,'light');
 w.document.querySelector('[data-nav="portfolio"]').click();
 assert.equal(w.document.querySelectorAll('tbody tr').length,5);
 w.document.querySelector('[data-action="import"]').click();assert(w.document.querySelector('#csv-file'));w.document.querySelector('[data-close]').click();
@@ -17,4 +18,4 @@ w.document.querySelector('[data-watch]').click();assert(w.localStorage.getItem('
 w.document.querySelector('[data-nav="settings"]').click();w.document.querySelector('[data-action="connect"]').click();assert(w.document.querySelector('#api-token'));
 assert.equal(w.__parseCsv('symbol,quantity,average_cost\nTCS,2,100')[0].quantity,2);
 assert.throws(()=>w.__parseCsv('symbol,quantity,average_cost\nTCS,NaN,100'));
-console.log('Dashboard DOM checks passed: navigation, filters, modals, horizon, watchlist and CSV validation.');w.close();
+console.log('Dashboard DOM checks passed: navigation, filters, modals, horizon, watchlist, day/night persistence and CSV validation.');w.close();

@@ -14,7 +14,10 @@ try:
   if r.status!=200:raise SystemExit('Health check failed')
  req=urllib.request.Request(base+'/api/scan',data=b'{}',headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'},method='POST')
  with urllib.request.urlopen(req,timeout=240) as r:result=json.load(r)
- print(json.dumps({'articles':len(result.get('articles',[])),'source_errors':len(result.get('errors',[]))}))
+ req=urllib.request.Request(base+'/api/market/refresh',data=b'{}',headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'},method='POST')
+ with urllib.request.urlopen(req,timeout=240) as r:market=json.load(r)
+ print(json.dumps({'price_results':len(market.get('results',[])),'price_errors':len(market.get('errors',[])),'articles':len(result.get('articles',[])),'source_errors':len(result.get('errors',[]))}))
+ if market.get('errors') and not market.get('results'):raise SystemExit('No market source succeeded. Existing prices retained.')
  if result.get('errors') and not result.get('articles'):raise SystemExit('No source succeeded. Check configured feed access.')
 except urllib.error.HTTPError as e:
  raise SystemExit(f'API returned HTTP {e.code}. Check service status and repository secret configuration.') from None

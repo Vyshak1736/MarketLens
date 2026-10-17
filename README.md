@@ -5,6 +5,8 @@ Evidence-led market research and portfolio monitoring. Built for Vishak's full-s
 ## What works in this release
 
 - Responsive dashboard: overview, portfolio, news intelligence, screening, research history and connections.
+- Day/night themes with remembered preference, responsive layouts and keyboard focus states.
+- Yahoo Finance daily NSE candles for personal testing, six-hour caching, five-minute failure cooldown and explicit source timestamps.
 - Browser-local sample mode with clearly labelled synthetic prices, news and chart series.
 - FastAPI backend with bearer-token authentication and explicit CORS origins.
 - CSV holdings import, valuation, concentration flags, missing/stale quote warnings.
@@ -19,9 +21,9 @@ Evidence-led market research and portfolio monitoring. Built for Vishak's full-s
 
 This is a single-owner MVP, not a production investment advisory service. The hosted Site is a static demonstration and API client. Python, PostgreSQL and RabbitMQ must run on a separate Python-capable server. Sample-mode scans never claim to fetch live news.
 
-The frontend is buildless HTML/CSS/JavaScript in this release; Next.js/React migration is not implemented. The LangGraph workflow is real but deterministic: no LLM is connected. Price-provider credentials, broker OAuth, fundamentals, account login, multi-tenant access, notifications, backtesting and exchange-holiday calendars are not implemented. Long-term ranking intentionally returns insufficient evidence until fundamentals and valuation are connected. News sentiment is not treated as a return predictor.
+The frontend is buildless HTML/CSS/JavaScript in this release; Next.js/React migration is not implemented. The LangGraph workflow is real but deterministic: no LLM is connected. Broker OAuth, verified fundamentals, account login, multi-tenant access, notifications, backtesting and exchange-holiday calendars are not implemented. Yahoo Finance access is unofficial and restricted to personal testing; no licensed commercial market feed is connected. Long-term ranking intentionally returns insufficient evidence until fundamentals and valuation are connected. News sentiment is not treated as a return predictor.
 
-The environment used to build this release blocked DNS access to the configured external news source. Live collection was therefore verified with mocked responses and explicit error reporting, not successful production news retrieval. Browser visual QA was unavailable; DOM interactions and backend workflows were tested.
+Live RSS access was initially blocked in the build environment. The Yahoo smoke test returned YFRateLimitError; no alternate identity or network was used to bypass it. Provider workflows were verified with fixtures, including rate-limit/error retention. Check deployed source status before trusting availability. The original UI was inspected in a browser before the theme redesign.
 
 ## Quick start (Python 3.12 recommended)
 
@@ -74,7 +76,7 @@ Use the dashboard import or POST `/api/portfolio/import`:
 {"content":"symbol,quantity,average_cost\nTCS,10,3800\n"}
 ```
 
-Provide licensed daily close prices, ordered oldest to newest, to POST `/api/prices/import`:
+For a manually sourced override, provide daily close prices you are permitted to use, ordered oldest to newest, to POST `/api/prices/import`:
 
 ```json
 {"symbol":"TCS","prices":[100,101,102],"as_of":"2026-10-15T10:00:00Z","source":"Your verified data-provider reference"}
@@ -91,6 +93,7 @@ All protected API calls require `Authorization: Bearer <API_TOKEN>`.
 | POST /api/scan | Collect configured sources; errors are returned explicitly |
 | POST /api/portfolio/import | Validate and replace holdings |
 | GET /api/portfolio | Valuation and concentration |
+| POST /api/market/refresh | Fetch or reuse cached Yahoo daily candles; optional symbols array |
 | POST /api/prices/import | Import a timestamped close-price series |
 | POST /api/research | `{ "symbol": "TCS", "horizon": "short" }` or `long` |
 | GET /api/export | Report snapshots and current portfolio |
@@ -128,7 +131,7 @@ Tests cover authentication, portfolio validation, P&L, company matching, insuffi
 
 ## Before public or paid use
 
-Add individual authentication, tenant isolation, role-aware data access, request limits, migration tooling, monitored scheduling, source retention rules, licensed feeds and tested provider adapters. Use HTTPS and keep API_TOKEN server-side where practical. The current shared API token identifies one owner, not multiple users. Browser session storage has normal XSS exposure; do not reuse a production broker credential as this token.
+Add individual authentication, tenant isolation, role-aware data access, request limits, migration tooling, monitored scheduling, source retention rules and licensed commercial feeds. Yahoo data must not be silently republished to other users. Use HTTPS and keep API_TOKEN server-side where practical. The current shared API token identifies one owner, not multiple users. Browser session storage has normal XSS exposure; do not reuse a production broker credential as this token.
 
 Assess the actual service under applicable research-analyst/investment-adviser requirements before selling recommendations. An educational label does not determine regulatory status. Validate strategies with time-based tests, corporate actions, transaction costs, survivorship and look-ahead bias controls before making performance claims.
 
@@ -152,3 +155,18 @@ Assess the actual service under applicable research-analyst/investment-adviser r
 6. The GitHub workflow runs four meaningful source collections per weekday and can be run manually. It does not continuously ping a sleeping server. Check your Actions usage allowance and enable repository Actions. Schedules can be delayed, require a default-branch workflow and can be disabled after inactivity in public repositories.
 
 The service sleeps when idle and restarts with an empty local filesystem. Use external PostgreSQL for persistence; local SQLite is not suitable on Render Free. Free Render PostgreSQL currently expires after 30 days, so it is not selected automatically. Render Free is suitable for a demo, not an always-on trading system. No paid resources are authorized by this configuration. Data-provider/API charges are separate from hosting.
+
+
+## Free personal-testing data (v0.2)
+
+No Yahoo API key or Zerodha subscription is needed for this adapter. Connect to the owner-authenticated backend, open My portfolio or Connections, and click **Refresh daily prices**. Research scan also refreshes prices after news collection. The scheduled GitHub script and Celery collection task now refresh both news and prices. Scheduled jobs still require their repository secrets and a running deployed backend; committing the workflow does not configure those secrets.
+
+`POST /api/market/refresh` accepts `{}` for the eight tracked companies or `{"symbols":["TCS","INFY"]}` for a subset. NSE Yahoo mappings are explicit (`TCS.NS`, `INFY.NS`, etc.). This adapter does not infer prices for unsupported symbols.
+
+Six months of daily candles are fetched, unfinished current-day candles are excluded until 16:00 IST, and at least 51 usable candles are required. Raw daily closes value holdings; adjusted closes feed trend calculations. Reports retain provider symbol, source, retrieval timestamp and close timestamp. These are daily closes, not a real-time trading feed.
+
+Successful results are cached in the configured database for six hours per symbol. Failed attempts have a five-minute cooldown; old values remain labelled with their original timestamps. No sample values are inserted into live mode. Cache durability depends on the configured database: SQLite on Render Free remains ephemeral until PostgreSQL is connected. A process lock prevents concurrent refreshes inside one API process; distributed locking is a future requirement before multiple replicas.
+
+Yahoo Finance via yfinance is unofficial, may rate-limit requests and is intended for personal research/testing. An API-key-free library does not grant commercial redistribution rights. Keep personal data endpoints owner-authenticated; use synthetic data for public interviews and obtain licensed sources before a paid/public data product.
+
+Long-term rankings and LLM explanations remain unavailable until their data and model connections are implemented.
