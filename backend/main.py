@@ -25,14 +25,19 @@ def put(key,value):
   c.execute(text('INSERT INTO state (key,value) VALUES (:key,:value) ON CONFLICT (key) DO UPDATE SET value=excluded.value'),{'key':key,'value':json.dumps(value)})
 @asynccontextmanager
 async def lifespan(app):init();yield
-app=FastAPI(title='MarketLens Research API',version='0.2.0',lifespan=lifespan)
+app=FastAPI(title='MarketLens Research API',version='0.2.1',lifespan=lifespan)
 app.add_middleware(CORSMiddleware,allow_origins=[x.strip() for x in os.getenv('CORS_ORIGINS','http://localhost:8000,http://127.0.0.1:8000').split(',')],allow_methods=['GET','POST'],allow_headers=['Authorization','Content-Type'])
+@app.middleware('http')
+async def response_cache_policy(request:Request,call_next):
+ response=await call_next(request)
+ response.headers['Cache-Control']='no-store' if request.url.path.startswith('/api/') else 'no-cache'
+ return response
 def auth(authorization:str=Header(default='')):
  token=os.getenv('API_TOKEN','')
  if not token:raise HTTPException(503,'Set API_TOKEN before using the backend')
  if not secrets.compare_digest(authorization,'Bearer '+token):raise HTTPException(401,'Invalid API token')
 @app.get('/api/health')
-def health():return {'status':'ok','mode':'live backend','version':'0.2.0','llm_connected':False}
+def health():return {'status':'ok','mode':'live backend','version':'0.2.1','llm_connected':False}
 @app.get('/api/state',dependencies=[Depends(auth)])
 def state():return {'holdings':get('holdings',[]),'quotes':get('quotes',{}),'news':get('news',{'articles':[],'errors':[]}),'last_scan':get('last_scan'),'reports':get('reports',[]),'universe':UNIVERSE,'market_status':get('market_status'),'screeners':screeners()}
 class MarketBody(BaseModel):
